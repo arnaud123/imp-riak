@@ -33,17 +33,26 @@ end
 Cluster cluster [0:1] -- [1:] Riak servers
 
 implementation riakServer:
+	# Install dependencies with Erlang
 	dep1 = std::Package(name = "gcc", host = self.host, state="installed")
     	dep2 = std::Package(name = "glibc-devel", host = self.host, state="installed")
 	dep3 = std::Package(name = "make", host = self.host, state="installed")
 	dep4 = std::Package(name = "ncurses-devel", host = self.host, state="installed")
 	dep5 = std::Package(name = "openssl-devel", host = self.host, state="installed")
 	dep6 = std::Package(name = "autoconf", host = self.host, state="installed")
-erl = std::Package(name = "erlang", host = self.host, state="installed", requires= [dep1,dep2,dep3,dep4,dep5,dep6])
-ri = std::Package(name = "riak", host = self.host, state="installed", requires=[dep1,dep2,dep3,dep4,dep5,dep6,erl])
+	# Install Erlang
+	erl = std::Package(name = "erlang", host = self.host, state="installed", requires= [dep1,dep2,dep3,dep4,dep5,dep6])
+	# Install Riak
+	ri = std::Package(name = "riak", host = self.host, state="installed", requires=[dep1,dep2,dep3,dep4,dep5,dep6,erl])
+	# Configure app.config file
+	appconfig = std::ConfigFile(path = "/etc/riak/app.config", content = template("riak/app.config.tmpl"), host = self.host, requires = [dep1,dep2,dep3,dep4,dep5,dep6,erl,ri], reload = true)
+	# Configure vm.args file
+	vmargs = std::ConfigFile(path = "/etc/riak/vm.args", content = template("riak/vm.args.tmpl"), host = self.host, requires = [dep1,dep2,dep3,dep4,dep5,dep6,erl,ri], reload = true)
+	# Riak als service opstarten bij boot
+	srv = std::Service(name = "riak", state = "running", onboot = true, requires = [dep1,dep2,dep3,dep4,dep5,dep6,erl,ri,vmargs,appconfig], host = self.host)
 end
 
 implement Riak using riakServer
 implement Cluster   using std::none
 
-
+#TODO: Change shell van riak user, aan elkaar koppelen van de installaties
