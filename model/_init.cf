@@ -37,20 +37,28 @@ implementation riakServer:
 	dep4 = std::Package(name = "ncurses-devel", host = self.host, state="installed")
 	dep5 = std::Package(name = "openssl-devel", host = self.host, state="installed")
 	dep6 = std::Package(name = "autoconf", host = self.host, state="installed")
+
 	# Install Erlang
 	erl = std::Package(name = "erlang", host = self.host, state="installed", requires= [dep1,dep2,dep3,dep4,dep5,dep6])
+
 	# Install Riak
-	ri = std::Package(name = "riak", host = self.host, state="installed", requires=[dep1,dep2,dep3,dep4,dep5,dep6,erl])
+	ri = std::Package(name = "riak", host = self.host, state="installed", requires=[erl])
+
 	# Configure app.config file
-	appconfig = std::ConfigFile(path = "/etc/riak/app.config", content = template("riak/app.config.tmpl"), host = self.host, requires = [dep1,dep2,dep3,dep4,dep5,dep6,erl,ri], reload = true)
+	appconfig = std::ConfigFile(path = "/etc/riak/app.config", content = template("riak/app.config.tmpl"), host = self.host, requires = [ri], reload = true)
+
 	# Configure vm.args file
-	vmargs = std::ConfigFile(path = "/etc/riak/vm.args", content = template("riak/vm.args.tmpl"), host = self.host, requires = [dep1,dep2,dep3,dep4,dep5,dep6,erl,ri], reload = true)
+	vmargs = std::ConfigFile(path = "/etc/riak/vm.args", content = template("riak/vm.args.tmpl"), host = self.host, requires = [ri], reload = true)
+
 	# Riak als service opstarten bij boot
-	srv = std::Service(name = "riak", state = "running", onboot = true, requires = [dep1,dep2,dep3,dep4,dep5,dep6,erl,ri,vmargs,appconfig], host = self.host)
+	srv = std::Service(name = "riak", state = "running", onboot = true, requires = [erl,vmargs,appconfig], host = self.host)
+
+	# Write file with cluster members
+	member_file = std::ConfigFile(path = "/etc/sysconfig/riak", reload=true, content = template("riak/nodes_in_ring.tmpl"), host = self.host, requires = [erl,vmargs,appconfig])
 end
 
 implement Riak using riakServer
-implement Cluster using std:none
+implement Cluster using std::none
 
 
-#TODO: Change shell van riak user, aan elkaar koppelen van de installaties,ulimit instellen
+#TODO: Change shell van riak user, aan elkaar koppelen van de installaties,ulimit instellen, remove ring data wanneer vm.args wordt aangepast

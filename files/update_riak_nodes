@@ -15,9 +15,11 @@ def getIpsConfigFile(pathToConfigFile):
 	filestream = open(pathToConfigFile,"r");
 	ips = [];
 	for line in fileStream:
-		ip = line.split(' ')[1];
-		ip = ip.strip(" \n");
-		ips.append(ip);
+		if line.find("update_riak_nodes") != -1:
+			ip = line.split(' ')[1];
+			ip = ip.strip(" \n");
+			ips.append(ip);
+		end
 	end
 	filestream.close();
 	return ips;
