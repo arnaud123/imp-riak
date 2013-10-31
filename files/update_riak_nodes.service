@@ -1,0 +1,13 @@
+[Unit]
+Description=Service for updating the nodes belonging to the riak ring
+After=riak.service
+
+[Service]
+Type=simple
+User=riak
+Group=riak
+
+ExecStart=/usr/bin/update_riak_nodes
+
+[Install]
+WantedBy=multi-user.target

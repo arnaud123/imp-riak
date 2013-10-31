@@ -1,0 +1,3 @@
+{% for server in servers %}
+update_riak_nodes {{ server.host.ip }} 
+{% endfor %}

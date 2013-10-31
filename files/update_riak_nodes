@@ -1,0 +1,66 @@
+#!/usr/bin/python
+import os;
+
+# update the ring configuration according to the config file
+def updateNodesInRing(pathToConfigFile):
+	configIps = getIpsConfigFile(pathToConfigFile);
+	currentIps = getIpsInRing();
+	removeIpsFromRing(currentIps);
+	addIpsToRing(configIps);
+	commitConfiguration();	
+end
+
+# Returns the ip-addresses of the nodes in the ring
+def getIpsConfigFile(pathToConfigFile):
+	filestream = open(pathToConfigFile,"r");
+	ips = [];
+	for line in fileStream:
+		ip = line.split(' ')[1];
+		ip = ip.strip(" \n");
+		ips.append(ip);
+	end
+	filestream.close();
+	return ips;
+end
+
+# Returns the ip-addresses of the nodes currently in the ring
+# Ouput of command looks like: "ring_members : ['riak@192.168.1.10','riak@192.168.1.11']"
+def getIpsInRing():
+	output = os.popen('bin/riak-admin status | grep ring_members').read();
+	index = output.index('[');
+	output = output[index:];
+	output = output.strip(" \n[]");
+	hostAndIpAddress = output.split(',');
+	result = [];
+	for entry in hostAndIpAddress:
+		entry = entry.strip("'");
+		ip = entry.split('@')[1];
+		result.append(ip);
+	end
+	return result;
+end
+
+def removeIpsFromRing(ips):
+	for ip in ips:
+		command = "bin/riak-admin cluster leave riak@" + ip;
+		os.popen(command);
+	end
+end
+
+def addIpsToRing(ips):
+	for ip in ips:
+		command = "bin/riak-admin cluster join riak@" + ip;
+		os.popen(command);
+	end
+end	
+
+def commitConfiguration():
+	os.popen('bin/riak-admin cluster plan');
+	os.popen('bin/riak-admin cluster commit');
+end
+
+#updateNodesInRing("/etc/sysconfig/riak/nodes_in_ring");
+ipsConfig = getIpsConfigFile("/tmp/conftest");
+ipsRing = getIpsInRing();
+print "ipsConfig: ", ipsConfig;
+print "ipsRing: ", ipsRing
