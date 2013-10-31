@@ -45,7 +45,8 @@ implementation riakServer:
 	ri = std::Package(name = "riak", host = self.host, state="installed", requires=[erl])
 
 	# Configure app.config file
-	appconfig = std::ConfigFile(path = "/etc/riak/app.config", content = template("riak/app.config.tmpl"), host = self.host, requires = [ri], reload = true)
+	appconfig = std::ConfigFile(path = "/etc/riak/app.config", content = template("riak/app.config.tmpl"), 
+	host = self.host, requires = [ri], reload = true)
 
 	# Configure vm.args file
 	vmargs = std::ConfigFile(path = "/etc/riak/vm.args", content = template("riak/vm.args.tmpl"), host = self.host, requires = [ri], reload = true)
@@ -54,7 +55,20 @@ implementation riakServer:
 	srv = std::Service(name = "riak", state = "running", onboot = true, requires = [erl,vmargs,appconfig], host = self.host)
 
 	# Write file with cluster members
-	member_file = std::ConfigFile(path = "/etc/sysconfig/riak", reload=true, content = template("riak/nodes_in_ring.tmpl"), host = self.host, requires = [erl,vmargs,appconfig])
+	member_file = std::ConfigFile(path = "/etc/sysconfig/riak", reload=true, content = template("riak/nodes_in_ring.tmpl"), 
+	host = self.host, requires = [erl,vmargs,appconfig])
+
+	# Write unit file (cluster membership service)
+	#unit_file = std::File(host = self.host, path = "/lib/systemd/system/update_riak_nodes.service", owner = "root", 
+	#group = "root", mode = 644, requires = [erl, vmargs, appconfig], content = file("riak/update_riak_nodes.service"))
+
+	# Write script of cluster membership service
+	#script_file = std::File(host = self.host, path = "/usr/bin/update_riak_nodes", owner = "root", group = "root", mode = 755, 
+	#content = file("riak/update_riak_nodes"), requires=[erl, vmargs, appconfig])
+
+	# Add cluster membership service
+	#service_file = std::Service(host = self.host, name = "update_riak_nodes", state = "running", onboot = true, 
+	#requires = [unit_file, script_file, member_file])
 end
 
 implement Riak using riakServer
