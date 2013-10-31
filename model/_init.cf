@@ -17,9 +17,17 @@
     Technical Contact: bart.vanbrabant@cs.kuleuven.be
 """
 
+entity Cluster:
+	"""
+	    A riak cluster consists of multiple servers
+	"""
+end
+
 entity Riak extends ip::services::Server:
 
 end
+
+Cluster cluster [0:1] -- [1:] Riak servers
 
 implementation riakServer:
 	# Install dependencies with Erlang
@@ -42,5 +50,7 @@ implementation riakServer:
 end
 
 implement Riak using riakServer
+implement Cluster using std:none
+
 
 #TODO: Change shell van riak user, aan elkaar koppelen van de installaties,ulimit instellen
