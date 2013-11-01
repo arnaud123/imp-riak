@@ -1,13 +1,30 @@
 #!/usr/bin/python
 import os;
 
+import socket;
+import fcntl;
+import struct;
+
 # update the ring configuration according to the config file
 def updateNodesInRing(pathToConfigFile):
 	configIps = getIpsConfigFile(pathToConfigFile);
 	currentIps = getIpsInRing();
-	removeIpsFromRing(currentIps);
-	addIpsToRing(configIps);
+	if (getOwnIp() not in configIps):
+		print "removing self...";
+		removeSelfFromRing();
+	else:
+		ipsNotYetInRing = getDifference(configIps,currentIps);
+		print "adding nodes to ring ", ipsNotYetInRing;
+		addIpsToRing(ipsNotYetInRing);
 	commitConfiguration();
+
+# Returns all the elements in the first list not contained in the second list
+def getDifference(list1, list2):
+	result = [];
+	for elem in list1:
+		if (elem not in list2):
+			result.append(elem);
+	return result;
 
 # Returns the ip-addresses of the nodes in the ring
 def getIpsConfigFile(pathToConfigFile):
@@ -36,22 +53,34 @@ def getIpsInRing():
 		result.append(ip);
 	return result;
 
-# Remove id address of node from the ring
-def removeIpsFromRing(ips):
-	for ip in ips:
-		command = "/bin/riak-admin cluster leave riak@" + ip;
-		os.popen(command);
+# Remove this node from the ring
+def removeSelfFromRing():
+	ownIp = getOwnIp();
+	command = "/bin/riak-admin cluster leave riak@" + ownIp;
+	os.popen(command);
 
 # Add ip address of node to the ring
 def addIpsToRing(ips):
 	for ip in ips:
+		print "adding ip ",ip;
 		command = "/bin/riak-admin cluster join riak@" + ip;
 		os.popen(command);
 
 # Commit changes made to the configuration file
 def commitConfiguration():
+	print "cluster plan...";
 	os.popen('/bin/riak-admin cluster plan');
+	print "cluster commit...";
 	os.popen('/bin/riak-admin cluster commit');
+
+def getOwnIp():
+	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
+	result = socket.inet_ntoa(fcntl.ioctl(
+        s.fileno(),
+        0x8915,  # SIOCGIFADDR
+        struct.pack('256s', "p2p1"[:15])
+	)[20:24]);
+	return result.strip("\n ");
 
 # Start of script
 updateNodesInRing("/etc/sysconfig/riak");
