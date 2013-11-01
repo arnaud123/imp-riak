@@ -5,16 +5,29 @@ import socket;
 import fcntl;
 import struct;
 
+'''
+This script consumes the /etc/sysconfig/riak file and updates the state
+of the riak ring according to this file. The /etc/sysconfig/riak file
+contains the target state of the ring.
+
+Need to knows: 
+
+* When a node is added to the cluster, any node already belonging to the 
+cluster is allowed to add the new node to the cluster by executing the
+join command. The join command is idempotent while not exploited by
+this script
+* When a node is removed from the cluster, the node must remove itself
+from the cluster by executing the remove command.
+'''
+
 # update the ring configuration according to the config file
 def updateNodesInRing(pathToConfigFile):
 	configIps = getIpsConfigFile(pathToConfigFile);
 	currentIps = getIpsInRing();
 	if (getOwnIp() not in configIps):
-		print "removing self...";
 		removeSelfFromRing();
 	else:
 		ipsNotYetInRing = getDifference(configIps,currentIps);
-		print "adding nodes to ring ", ipsNotYetInRing;
 		addIpsToRing(ipsNotYetInRing);
 	commitConfiguration();
 
@@ -53,26 +66,25 @@ def getIpsInRing():
 		result.append(ip);
 	return result;
 
-# Remove this node from the ring
+# Remove this node from the ring (the node this script runs on)
 def removeSelfFromRing():
 	ownIp = getOwnIp();
 	command = "/bin/riak-admin cluster leave riak@" + ownIp;
 	os.popen(command);
 
-# Add ip address of node to the ring
+# Add ip addresses of nodes to the ring
 def addIpsToRing(ips):
 	for ip in ips:
-		print "adding ip ",ip;
 		command = "/bin/riak-admin cluster join riak@" + ip;
 		os.popen(command);
 
 # Commit changes made to the configuration file
 def commitConfiguration():
-	print "cluster plan...";
 	os.popen('/bin/riak-admin cluster plan');
-	print "cluster commit...";
 	os.popen('/bin/riak-admin cluster commit');
 
+# Get the ip address of the interface "p2p1" from the node
+# this script is running on.
 def getOwnIp():
 	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
 	result = socket.inet_ntoa(fcntl.ioctl(
