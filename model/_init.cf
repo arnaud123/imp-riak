@@ -51,28 +51,28 @@ implementation riakServer:
 	# Configure vm.args file
 	vmargs = std::ConfigFile(path = "/etc/riak/vm.args", content = template("riak/vm.args.tmpl"), host = self.host, requires = [ri], reload = true)
 
-	# Riak als service opstarten bij boot
-	srv = std::Service(name = "riak", state = "running", onboot = true, requires = [erl,vmargs,appconfig], host = self.host)
+	# Start riak as serivce at boot
+	srv = std::Service(name = "riak", state = "running", onboot = true, requires = [ri,vmargs,appconfig], host = self.host)
 
 	# Write file with cluster members
 	member_file = std::ConfigFile(path = "/etc/sysconfig/riak", reload=true, content = template("riak/nodes_in_ring.tmpl"), 
-	host = self.host, requires = [erl,vmargs,appconfig])
+	host = self.host, requires = [ri,vmargs,appconfig])
 
 	# Write unit file (cluster membership service)
-	#unit_file = std::File(host = self.host, path = "/lib/systemd/system/update_riak_nodes.service", owner = "root", 
-	#group = "root", mode = 644, requires = [erl, vmargs, appconfig], content = file("riak/update_riak_nodes.service"))
+	unit_file = std::File(host = self.host, path = "/lib/systemd/system/update_riak_nodes.service", owner = "root", 
+	group = "root", mode = 644, requires = [ri, vmargs, appconfig], content = file("riak/update_riak_nodes.service"))
 
 	# Write script of cluster membership service
-	#script_file = std::File(host = self.host, path = "/usr/bin/update_riak_nodes", owner = "root", group = "root", mode = 755, 
-	#content = file("riak/update_riak_nodes"), requires=[erl, vmargs, appconfig])
+	script_file = std::File(host = self.host, path = "/usr/bin/update_riak_nodes", owner = "root", group = "root", mode = 755, 
+	content = file("riak/update_riak_nodes"), requires=[ri, vmargs, appconfig])
 
 	# Add cluster membership service
-	#service_file = std::Service(host = self.host, name = "update_riak_nodes", state = "running", onboot = true, 
-	#requires = [unit_file, script_file, member_file])
+	service_file = std::Service(host = self.host, name = "update_riak_nodes", state = "running", onboot = true, 
+	requires = [unit_file, script_file, member_file])
 end
 
 implement Riak using riakServer
 implement Cluster using std::none
 
 
-#TODO: Change shell van riak user, aan elkaar koppelen van de installaties,ulimit instellen, remove ring data wanneer vm.args wordt aangepast
+#TODO: Change shell van riak user, ulimit instellen, remove ring data wanneer vm.args wordt aangepast
