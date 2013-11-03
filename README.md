@@ -10,4 +10,3 @@ Dependencies with other IMP modules
 * net
 * redhat
 * std
-* yum
