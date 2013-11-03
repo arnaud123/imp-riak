@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/bin/python
 import os;
 
 import socket;
@@ -90,7 +90,7 @@ def getOwnIp():
 	result = socket.inet_ntoa(fcntl.ioctl(
         s.fileno(),
         0x8915,  # SIOCGIFADDR
-        struct.pack('256s', "p2p1"[:15])
+        struct.pack('256s', "eth0"[:15])
 	)[20:24]);
 	return result.strip("\n ");
 
