@@ -22,6 +22,8 @@ from the cluster by executing the remove command.
 
 # update the ring configuration according to the config file
 def updateNodesInRing(pathToConfigFile):
+	os.popen("ulimit -n 65536");
+	os.popen("chsh -s /bin/bash riak");
 	configIps = getIpsConfigFile(pathToConfigFile);
 	currentIps = getIpsInRing();
 	if (getOwnIp() not in configIps):
