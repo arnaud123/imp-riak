@@ -4,6 +4,7 @@ import os;
 import socket;
 import fcntl;
 import struct;
+import subprocess;
 
 '''
 This script consumes the /etc/sysconfig/riak file and updates the state
@@ -56,7 +57,8 @@ def getIpsConfigFile(pathToConfigFile):
 # Returns the ip-addresses of the nodes currently in the ring
 # Ouput of command looks like: "ring_members : ['riak@192.168.1.10','riak@192.168.1.11']"
 def getIpsInRing():
-	output = os.popen('/bin/riak-admin status | grep ring_members').read();
+	p1 = subprocess.Popen(["/bin/riak-admin", "status"], stdout=subprocess.PIPE);
+	output = subprocess.Popen(["grep", "ring_members"], stdin=p1.stdout, stdout=subprocess.PIPE).communicate()[0];
 	index = output.index('[');
 	output = output[index:];
 	output = output.strip(" \n[]");
