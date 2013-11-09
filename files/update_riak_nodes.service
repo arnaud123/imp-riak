@@ -4,8 +4,8 @@ After=riak.service
 
 [Service]
 Type=simple
-User=riak
-Group=riak
+User=root
+Group=root
 
 ExecStart=/usr/bin/update_riak_nodes
 
