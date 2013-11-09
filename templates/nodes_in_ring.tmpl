@@ -1,3 +1,4 @@
 {% for server in cluster.servers %}
 update_riak_nodes {{ server.host.ip }} 
 {% endfor %}
+self {{host.ip}}

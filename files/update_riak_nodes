@@ -21,11 +21,13 @@ this script
 from the cluster by executing the remove command.
 '''
 
+pathToConfigFile = "/etc/sysconfig/riak";
+
 # update the ring configuration according to the config file
-def updateNodesInRing(pathToConfigFile):
+def updateNodesInRing():
 	os.popen("ulimit -n 65536");
 	os.popen("chsh -s /bin/bash riak");
-	configIps = getIpsConfigFile(pathToConfigFile);
+	configIps = getSectionsFromConfigFile("update_riak_nodes");
 	currentIps = getIpsInRing();
 	if (getOwnIp() not in configIps):
 		removeSelfFromRing();
@@ -43,16 +45,16 @@ def getDifference(list1, list2):
 	return result;
 
 # Returns the ip-addresses of the nodes in the ring
-def getIpsConfigFile(pathToConfigFile):
+def getSectionsFromConfigFile(label):
 	filestream = open(pathToConfigFile,"r");
-	ips = [];
+	result = [];
 	for line in filestream:
-		if line.find("update_riak_nodes") != -1:
-			ip = line.split(' ')[1];
-			ip = ip.strip(" \n");
-			ips.append(ip);
+		if line.find(label) != -1:
+			resultItem = line.split(' ')[1];
+			resultItem = resultItem.strip(" \n");
+			result.append(resultItem);
 	filestream.close();
-	return ips;
+	return result;
 
 # Returns the ip-addresses of the nodes currently in the ring
 # Ouput of command looks like: "ring_members : ['riak@192.168.1.10','riak@192.168.1.11']"
@@ -90,13 +92,7 @@ def commitConfiguration():
 # Get the ip address of the interface "p2p1" from the node
 # this script is running on.
 def getOwnIp():
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM);
-	result = socket.inet_ntoa(fcntl.ioctl(
-        s.fileno(),
-        0x8915,  # SIOCGIFADDR
-        struct.pack('256s', "eth0"[:15])
-	)[20:24]);
-	return result.strip("\n ");
+	return getSectionsFromConfigFile("self")[0];
 
 # Start of script
-updateNodesInRing("/etc/sysconfig/riak");
+updateNodesInRing();
