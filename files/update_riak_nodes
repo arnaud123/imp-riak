@@ -59,7 +59,7 @@ def getSectionsFromConfigFile(label):
 # Returns the ip-addresses of the nodes currently in the ring
 # Ouput of command looks like: "ring_members : ['riak@192.168.1.10','riak@192.168.1.11']"
 def getIpsInRing():
-	p1 = subprocess.Popen(["/bin/riak-admin", "status"], stdout=subprocess.PIPE);
+	p1 = subprocess.call(["su riak -c '/bin/riak-admin status'"], stdout=subprocess.PIPE, shell=True);
 	output = subprocess.Popen(["grep", "ring_members"], stdin=p1.stdout, stdout=subprocess.PIPE).communicate()[0];
 	index = output.index('[');
 	output = output[index:];
@@ -75,19 +75,19 @@ def getIpsInRing():
 # Remove this node from the ring (the node this script runs on)
 def removeSelfFromRing():
 	ownIp = getOwnIp();
-	command = "/bin/riak-admin cluster leave riak@" + ownIp;
+	command = "su riak -c '/bin/riak-admin cluster leave riak@" + ownIp + "'";
 	os.popen(command);
 
 # Add ip addresses of nodes to the ring
 def addIpsToRing(ips):
 	for ip in ips:
-		command = "/bin/riak-admin cluster join riak@" + ip;
+		command = "su riak -c '/bin/riak-admin cluster join riak@" + ip + "'";
 		os.popen(command);
 
 # Commit changes made to the configuration file
 def commitConfiguration():
-	os.popen('/bin/riak-admin cluster plan');
-	os.popen('/bin/riak-admin cluster commit');
+	os.popen("su riak -c '/bin/riak-admin cluster plan'");
+	os.popen("su riak -c '/bin/riak-admin cluster commit'");
 
 # Get the ip address of the interface "p2p1" from the node
 # this script is running on.
