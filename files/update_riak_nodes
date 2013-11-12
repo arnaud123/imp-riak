@@ -59,7 +59,7 @@ def getSectionsFromConfigFile(label):
 # Returns the ip-addresses of the nodes currently in the ring
 # Ouput of command looks like: "ring_members : ['riak@192.168.1.10','riak@192.168.1.11']"
 def getIpsInRing():
-	p1 = subprocess.call(["su riak -c '/bin/riak-admin status'"], stdout=subprocess.PIPE, shell=True);
+	p1 = subprocess.Popen(["su riak -c '/bin/riak-admin status'"], stdout=subprocess.PIPE, shell=True);
 	output = subprocess.Popen(["grep", "ring_members"], stdin=p1.stdout, stdout=subprocess.PIPE).communicate()[0];
 	index = output.index('[');
 	output = output[index:];
