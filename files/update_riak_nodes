@@ -1,10 +1,8 @@
 #!/bin/python
-import os;
 
-import socket;
-import fcntl;
-import struct;
+import os;
 import subprocess;
+import time;
 
 '''
 This script consumes the /etc/sysconfig/riak file and updates the state
@@ -25,7 +23,9 @@ pathToConfigFile = "/etc/sysconfig/riak";
 
 # update the ring configuration according to the config file
 def updateNodesInRing():
-	os.popen("ulimit -n 65536");
+	# Set open file limit for riak user
+	os.popen("echo \"riak soft nofile 5000\" >> /etc/security/limits.conf");
+	# Change shell for riak user from /sbin/nologin to /bin/bash
 	os.popen("chsh -s /bin/bash riak");
 	configIps = getSectionsFromConfigFile("update_riak_nodes");
 	currentIps = getIpsInRing();
@@ -59,10 +59,9 @@ def getSectionsFromConfigFile(label):
 # Returns the ip-addresses of the nodes currently in the ring
 # Ouput of command looks like: "ring_members : ['riak@192.168.1.10','riak@192.168.1.11']"
 def getIpsInRing():
-	p1 = subprocess.Popen(["su riak -c '/bin/riak-admin status'"], stdout=subprocess.PIPE, shell=True);
-	output = subprocess.Popen(["grep", "ring_members"], stdin=p1.stdout, stdout=subprocess.PIPE).communicate()[0];
-	index = output.index('[');
-	output = output[index:];
+	status = getMembershipStatus();
+	index = status.index('[');
+	output = status[index:];
 	output = output.strip(" \n[]");
 	hostAndIpAddress = output.split(',');
 	result = [];
@@ -71,6 +70,26 @@ def getIpsInRing():
 		ip = entry.split('@')[1];
 		result.append(ip);
 	return result;
+
+# Returns the ring membership status. If this fails, it will
+# restart riak an try one more time. 
+def getMembershipStatus():
+	try:
+		return executeMembershipStatusCommand();
+	except Exception:
+		os.popen("su riak -c \"riak restart\"");
+		time.sleep(3);
+		return executeMembershipStatusCommand();
+
+# Returns the ring membership status or raises and
+# exception when unable to retrieve this data from riak. 
+def executeMembershipStatusCommand():
+	p1 = subprocess.Popen(["su riak -c '/bin/riak-admin status'"], stdout=subprocess.PIPE, shell=True);
+	output = subprocess.Popen(["grep", "ring_members"], stdin=p1.stdout, stdout=subprocess.PIPE).communicate()[0];
+	if "ring_members" in output:
+		return output;
+	else:
+		raise Exception("Ring membership status could not be retrieved from riak");	
 
 # Remove this node from the ring (the node this script runs on)
 def removeSelfFromRing():
