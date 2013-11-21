@@ -19,12 +19,15 @@ this script
 from the cluster by executing the remove command.
 '''
 
-pathToConfigFile = "/etc/sysconfig/riak";
+PATH_TO_CONFIG_FILE = "/etc/sysconfig/riak";
+ULIMIT_FILE_ENTRY = "riak soft nofile 5000";
+PATH_TO_LIMITS_CONF= "/etc/security/limits.conf";
 
 # update the ring configuration according to the config file
 def updateNodesInRing():
 	# Set open file limit for riak user
-	os.popen("echo \"riak soft nofile 5000\" >> /etc/security/limits.conf");
+	if not doesFileContainLine(PATH_TO_LIMITS_CONF, ULIMIT_FILE_ENTRY):
+		os.popen("echo \"" + ULIMIT_FILE_ENTRY + "\" >> " +  PATH_TO_LIMITS_CONF);
 	# Change shell for riak user from /sbin/nologin to /bin/bash
 	os.popen("chsh -s /bin/bash riak");
 	configIps = getSectionsFromConfigFile("update_riak_nodes");
@@ -46,7 +49,7 @@ def getDifference(list1, list2):
 
 # Returns the ip-addresses of the nodes in the ring
 def getSectionsFromConfigFile(label):
-	filestream = open(pathToConfigFile,"r");
+	filestream = open(PATH_TO_CONFIG_FILE,"r");
 	result = [];
 	for line in filestream:
 		if line.find(label) != -1:
@@ -112,6 +115,12 @@ def commitConfiguration():
 # this script is running on.
 def getOwnIp():
 	return getSectionsFromConfigFile("self")[0];
+
+def doesFileContainLine(path, line):
+	filestream = open(path, "r");
+	contentFile = filestream.read();
+	filestream.close();
+	return line in contentFile;
 
 # Start of script
 updateNodesInRing();
