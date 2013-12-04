@@ -9,9 +9,9 @@ This script consumes the /etc/sysconfig/riak file and updates the state
 of the riak ring according to this file. The /etc/sysconfig/riak file
 contains the target state of the ring.
 
-Need to knows: 
+Need to knows:
 
-* When a node is added to the cluster, any node already belonging to the 
+* When a node is added to the cluster, any node already belonging to the
 cluster is allowed to add the new node to the cluster by executing the
 join command. The join command is idempotent while not exploited by
 this script
@@ -25,102 +25,103 @@ PATH_TO_LIMITS_CONF= "/etc/security/limits.conf";
 
 # update the ring configuration according to the config file
 def updateNodesInRing():
-	# Set open file limit for riak user
-	if not doesFileContainLine(PATH_TO_LIMITS_CONF, ULIMIT_FILE_ENTRY):
-		os.popen("echo \"" + ULIMIT_FILE_ENTRY + "\" >> " +  PATH_TO_LIMITS_CONF);
-	# Change shell for riak user from /sbin/nologin to /bin/bash
-	os.popen("chsh -s /bin/bash riak");
-	configIps = getSectionsFromConfigFile("update_riak_nodes");
-	currentIps = getIpsInRing();
-	if (getOwnIp() not in configIps):
-		removeSelfFromRing();
-	else:
-		ipsNotYetInRing = getDifference(configIps,currentIps);
-		addIpsToRing(ipsNotYetInRing);
-	commitConfiguration();
+        # Set open file limit for riak user
+        if not doesFileContainLine(PATH_TO_LIMITS_CONF, ULIMIT_FILE_ENTRY):
+                os.popen("echo \"" + ULIMIT_FILE_ENTRY + "\" >> " + PATH_TO_LIMITS_CONF);
+        # Change shell for riak user from /sbin/nologin to /bin/bash
+        os.popen("chsh -s /bin/bash riak");
+        configIps = getSectionsFromConfigFile("update_riak_nodes");
+        currentIps = getIpsInRing();
+        if (getOwnIp() not in configIps):
+                removeSelfFromRing();
+        else:
+                ipsNotYetInRing = getDifference(configIps,currentIps);
+                addIpsToRing(ipsNotYetInRing);
+        commitConfiguration();
 
 # Returns all the elements in the first list not contained in the second list
 def getDifference(list1, list2):
-	result = [];
-	for elem in list1:
-		if (elem not in list2):
-			result.append(elem);
-	return result;
+        result = [];
+        for elem in list1:
+                if (elem not in list2):
+                        result.append(elem);
+        return result;
 
 # Returns the ip-addresses of the nodes in the ring
 def getSectionsFromConfigFile(label):
-	filestream = open(PATH_TO_CONFIG_FILE,"r");
-	result = [];
-	for line in filestream:
-		if line.find(label) != -1:
-			resultItem = line.split(' ')[1];
-			resultItem = resultItem.strip(" \n");
-			result.append(resultItem);
-	filestream.close();
-	return result;
+        filestream = open(PATH_TO_CONFIG_FILE,"r");
+        result = [];
+        for line in filestream:
+                if line.find(label) != -1:
+                        resultItem = line.split(' ')[1];
+                        resultItem = resultItem.strip(" \n");
+                        result.append(resultItem);
+        filestream.close();
+        return result;
 
 # Returns the ip-addresses of the nodes currently in the ring
 # Ouput of command looks like: "ring_members : ['riak@192.168.1.10','riak@192.168.1.11']"
 def getIpsInRing():
-	status = getMembershipStatus();
-	index = status.index('[');
-	output = status[index:];
-	output = output.strip(" \n[]");
-	hostAndIpAddress = output.split(',');
-	result = [];
-	for entry in hostAndIpAddress:
-		entry = entry.strip("'");
-		ip = entry.split('@')[1];
-		result.append(ip);
-	return result;
+        status = getMembershipStatus();
+        result = [];
+        for statusElem in status.split("\n"):
+            if not statusElem:
+                continue;
+            startIndex = statusElem.index("'");
+            output = statusElem[(startIndex+1):];
+            stopIndex = output.index("'");
+            hostAndIpAddress = output[0:stopIndex];
+            ip = hostAndIpAddress.split('@')[1];
+            result.append(ip);
+        return result;
 
 # Returns the ring membership status. If this fails, it will
-# restart riak an try one more time. 
+# restart riak an try one more time.
 def getMembershipStatus():
-	try:
-		return executeMembershipStatusCommand();
-	except Exception:
-		os.popen("su riak -c \"riak restart\"");
-		time.sleep(3);
-		return executeMembershipStatusCommand();
+        try:
+                return executeMembershipStatusCommand();
+        except Exception:
+                os.popen("su riak -c \"riak restart\"");
+                time.sleep(3);
+                return executeMembershipStatusCommand();
 
 # Returns the ring membership status or raises and
-# exception when unable to retrieve this data from riak. 
+# exception when unable to retrieve this data from riak.
 def executeMembershipStatusCommand():
-	p1 = subprocess.Popen(["su riak -c '/bin/riak-admin status'"], stdout=subprocess.PIPE, shell=True);
-	output = subprocess.Popen(["grep", "ring_members"], stdin=p1.stdout, stdout=subprocess.PIPE).communicate()[0];
-	if "ring_members" in output:
-		return output;
-	else:
-		raise Exception("Ring membership status could not be retrieved from riak");	
+        p1 = subprocess.Popen(["su riak -c '/bin/riak-admin member_status'"], stdout=subprocess.PIPE, shell=True);
+        output = subprocess.Popen(["grep", "@"], stdin=p1.stdout, stdout=subprocess.PIPE).communicate()[0];
+        if output:
+                return output;
+        else:
+                raise Exception("Ring membership status could not be retrieved from riak");        
 
 # Remove this node from the ring (the node this script runs on)
 def removeSelfFromRing():
-	ownIp = getOwnIp();
-	command = "su riak -c '/bin/riak-admin cluster leave riak@" + ownIp + "'";
-	os.popen(command);
+        ownIp = getOwnIp();
+        command = "su riak -c '/bin/riak-admin cluster leave riak@" + ownIp + "'";
+        os.popen(command);
 
 # Add ip addresses of nodes to the ring
 def addIpsToRing(ips):
-	for ip in ips:
-		command = "su riak -c '/bin/riak-admin cluster join riak@" + ip + "'";
-		os.popen(command);
+        for ip in ips:
+                command = "su riak -c '/bin/riak-admin cluster join riak@" + ip + "'";
+                os.popen(command);
 
 # Commit changes made to the configuration file
 def commitConfiguration():
-	os.popen("su riak -c '/bin/riak-admin cluster plan'");
-	os.popen("su riak -c '/bin/riak-admin cluster commit'");
+        os.popen("su riak -c '/bin/riak-admin cluster plan'");
+        os.popen("su riak -c '/bin/riak-admin cluster commit'");
 
 # Get the ip address of the interface "p2p1" from the node
 # this script is running on.
 def getOwnIp():
-	return getSectionsFromConfigFile("self")[0];
+        return getSectionsFromConfigFile("self")[0];
 
 def doesFileContainLine(path, line):
-	filestream = open(path, "r");
-	contentFile = filestream.read();
-	filestream.close();
-	return line in contentFile;
+        filestream = open(path, "r");
+        contentFile = filestream.read();
+        filestream.close();
+        return line in contentFile;
 
 # Start of script
 updateNodesInRing();
